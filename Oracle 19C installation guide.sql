@@ -33,6 +33,11 @@ grep MemTotal /proc/meminfo
 5. Check Storage Hardware
 df -h 
 
+6. To determine the distribution and version of Linux installed, enter one of the following
+commands:
+# cat /etc/oracle-release
+# cat /etc/redhat-release
+# cat /etc/os-releas
 
 ============== **Software**================
 
@@ -48,7 +53,7 @@ cat /etc/redhat-release
               Minimum
               250 32000 100 128
 
-              To configure kernel parameter
+              To configure kernel parameters
               https://docs.oracle.com/database/121/LADBI/app_manual.htm#CIHGDACA 
 
               2.2 shmmax 
@@ -83,18 +88,102 @@ cat /etc/redhat-release
               2.10 wmem_max
               wmem_max	1048576	/proc/sys/net/core/wmem_max
 
+=========================================================
+Steps to Edit sysctl.conf and add the below parameters:-
+
+fs.file-max = 6815744
+kernel.sem = 250 32000 100 128
+kernel.shmmni = 4096
+kernel.shmall = 1073741824
+kernel.shmmax = 4398046511104
+net.core.rmem_default = 262144
+net.core.rmem_max = 4194304
+net.core.wmem_default = 262144
+net.core.wmem_max = 1048576
+fs.aio-max-nr = 1048576
+net.ipv4.ip_local_port_range = 9000 65500
+kernel.panic_on_oops=1
+
+Then execute:-
+
+/sbin/sysctl -p
+
+for the above changes to take effect immediately.
+
+============== **Oracle 19c Preinstallations**==========================
+
+*** Log in as root
+
+1. CentOS 
+>>>>  yum install -y https://yum.oracle.com/repo/OracleLinux/OL7/latest/x86_64/getPackage/oracle-database-preinstall-19c-1.0-1.el7.x86_64.rpm
+
+2. Oracle Linux 6 and Oracle Linux 7:
+
+>>>>  yum install oracle-rdbms-server-12cR1-preinstall
+
+3. Oracle Linux 5:
+
+>>>> yum install oracle-validated
+
+Enter the following command as root to update the sysctl.conf settings:
+
+>>>> sysctl -p
+
+============== ** Operating System Requirements for x86-64 Linux Platforms ** ============
+
+1. Supported Red Hat Enterprise Linux 7 Distributions for x86-64
+
+>> Install the latest released versions of the following packages:
+        bc
+        binutils
+        compat-libcap1
+        compat-libstdc++-33
+        elfutils-libelf
+        elfutils-libelf-devel
+        fontconfig-devel
+        glibc
+        glibc-devel
+        ksh
+        libaio
+        libaio-devel
+        libX11
+        libXau
+        libXi
+        libXtst
+        libXrender
+        libXrender-devel
+        libgcc
+        libstdc++
+        libstdc++-devel
+        libxcb
+        make
+        smartmontools
+        sysstat
+
+Steps:- Check which packages are installed and which are missing:-
+
+rpm -qa --qf '%{name}-%{version}-%{release}.%{arch}\n' | sort | grep package_name
+
+OR
+
+For multiple packages
+rpm -q bc binutils compat-libcap1 compat-libstdc++-33 elfutils-libelf elfutils-libelf-devel fontconfig-devel glibc glibc-devel ksh libaio libaio-devel libX11 libXau libXi libXtst libXrender libXrender-devel libgcc libstdc++ libstdc++-devel libxcb make smartmontools sysstat
+
+If any rpm is missing, please install the same using yum:-
+
+yum install package_name
 
 ============== **Oracle User Environment Configuration**================
 
 1. Group and User
 
-# id oracle
+>>>>  id oracle
 
 OR
 
-cat /etc/group | oracle
+>>>>>  cat /etc/group | oracle
 
-less /etc/passwd
+>>>>>  less /etc/passwd
 
 uid=54321(oracle) gid=54421(oinstall) groups=54322(dba),54323(oper),54327(asmdba)
 
@@ -111,16 +200,12 @@ groupadd -g 54329 asmadmin
 
 OR 
 
-# /usr/sbin/groupadd -g 54321 oinstall
+>>>>> /usr/sbin/groupadd -g 54321 oinstall
 
 useradd -u 54321 -g oinstall -G dba,oper,backupdba,dgdba,kmdba oracle
 
-passwd oracle
+>>>>> passwd oracle
 
-
-
-Oracle 19c preinstall=======================================================================
-yum install -y https://yum.oracle.com/repo/OracleLinux/OL7/latest/x86_64/getPackage/oracle-database-preinstall-19c-1.0-1.el7.x86_64.rpm
 
 5. Verify preinstalled features
 cat /etc/sysctl.conf
@@ -169,6 +254,56 @@ oracle   soft   stack    10240
 oracle   hard   stack    32768
 oracle   hard   memlock    134217728
 oracle   soft   memlock    134217728
+
+Additional Setups ====================================================================================================
+
+Set secure Linux to permissive by editing the "/etc/selinux/config" file, making sure the SELINUX flag is set as follows.
+SELINUX=permissive
+Once the change is complete, restart the server or run the following command.
+>>> setenforce Permissive
+>>> If you have the Linux firewall enabled, you will need to disable or configure it, as shown here. To disable it, do the following.
+ systemctl stop firewalld
+>>> systemctl disable firewalld
+
+
+========================================================================================================
+
+INSTALLATION DB CHECKS
+
+========================================================================================================
+
+
+1. Unzip software.
+>>> cd $ORACLE_HOME
+unzip -oq /path/to/software/LINUX.X64_193000_db_home.zip
+
+2. Interactive mode.
+./runInstaller
+
+# Silent mode.
+./runInstaller -ignorePrereq -waitforcompletion -silent                        \
+    -responseFile ${ORACLE_HOME}/install/response/db_install.rsp               \
+    oracle.install.option=INSTALL_DB_SWONLY                                    \
+    ORACLE_HOSTNAME=${ORACLE_HOSTNAME}                                         \
+    UNIX_GROUP_NAME=oinstall                                                   \
+    INVENTORY_LOCATION=${ORA_INVENTORY}                                        \
+    SELECTED_LANGUAGES=en,en_GB                                                \
+    ORACLE_HOME=${ORACLE_HOME}                                                 \
+    ORACLE_BASE=${ORACLE_BASE}                                                 \
+    oracle.install.db.InstallEdition=EE                                        \
+    oracle.install.db.OSDBA_GROUP=dba                                          \
+    oracle.install.db.OSBACKUPDBA_GROUP=dba                                    \
+    oracle.install.db.OSDGDBA_GROUP=dba                                        \
+    oracle.install.db.OSKMDBA_GROUP=dba                                        \
+    oracle.install.db.OSRACDBA_GROUP=dba                                       \
+    SECURITY_UPDATES_VIA_MYORACLESUPPORT=false                                 \
+    DECLINE_SECURITY_UPDATES=true
+Run the root scripts when prompted.
+As a root user, execute the following script(s):
+        1. /u01/app/oraInventory/orainstRoot.sh
+        2. /u01/app/oracle/product/19.0.0/dbhome_1/root.sh
+
+
 
 
 ========================================================================================================
